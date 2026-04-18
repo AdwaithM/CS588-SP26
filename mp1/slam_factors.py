@@ -30,9 +30,32 @@ def motion_error_and_jacobians(
 
     # ======= STUDENT TODO START (edit only inside this block) =======
     # TODO(student): implement the motion error and Jacobians analytically
+    x_i, y_i, theta_i = pose_i
+    x_j, y_j, theta_j = pose_j
+    dx, dy, dtheta = T_ji
 
-    # placeholder
-    raise NotImplementedError("Not implemented")
+    cos_i = np.cos(theta_i)
+    sin_i = np.sin(theta_i)
+
+
+    predicted_x = x_i + (cos_i * dx - sin_i * dy)
+    predicted_y = y_i + (sin_i * dx + cos_i * dy)
+    predicted_theta = theta_i + dtheta
+
+    residual_x = x_j - predicted_x
+    residual_y = y_j - predicted_y
+    residual_theta = normalize_angle(theta_j - predicted_theta)
+
+    residual = np.array([residual_x, residual_y, residual_theta])
+
+    J_i = np.array([
+        [-1.0, 0.0, (sin_i * dx + cos_i * dy)],
+        [0.0, -1.0, (-cos_i * dx + sin_i * dy)],
+        [0.0, 0.0, -1.0]
+    ])
+
+    J_j = np.eye(3)
+
 
     # ======= STUDENT TODO END (do not change code outside this block) =======
 

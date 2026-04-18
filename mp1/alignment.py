@@ -27,9 +27,14 @@ def world_to_pixel(xy: np.ndarray, map_spec: MapSpec) -> np.ndarray:
     # 4) use np.int64 for the pixel coordinates
     # 5) make sure to avoid using for loops
 
-    # placeholders 
-    cols = np.zeros_like(xy[:, 0], dtype=np.int64)
-    rows = np.zeros_like(xy[:, 1], dtype=np.int64)
+    x_coordinates = xy[:, 0]
+    y_coordinates = xy[:, 1]
+
+    pixel_cols_recentered = (x_coordinates - map_spec.x_min) / map_spec.resolution
+    pixel_rows_recentered = (map_spec.y_max - y_coordinates) / map_spec.resolution
+
+    rows = np.floor(pixel_rows_recentered).astype(np.int64)
+    cols = np.floor(pixel_cols_recentered).astype(np.int64)
 
     # ======= STUDENT TODO END (do not change code outside this block) =======
 
@@ -57,12 +62,15 @@ def rasterize_topdown(points_world: list[np.ndarray], map_spec: MapSpec) -> dict
         # ======= STUDENT TODO START (edit only inside this block) =======
         # TODO(student): compute the valid rows and columns
         # 1) implement world_to_pixel: compute the rows and columns in pixel coordinates
+        pixel_coordinates = world_to_pixel(xy, map_spec)
+        all_rows = pixel_coordinates[:, 0]
+        all_cols = pixel_coordinates[:, 1]
+
         # 2) filter out the points that are outside the map
-        
-        # placeholders
-        rc = world_to_pixel(xy, map_spec)
-        rows = rc[:, 0]
-        cols = rc[:, 1]
+        is_inside_filter = (all_rows >= 0) & (all_rows < map_spec.height) & (all_cols >= 0) & (all_cols < map_spec.width)
+
+        rows = all_rows[is_inside_filter]
+        cols = all_cols[is_inside_filter]
 
         # ======= STUDENT TODO END (do not change code outside this block) =======
         
@@ -85,9 +93,27 @@ def build_accumulated_map(static_points: list[np.ndarray], poses_se2: np.ndarray
     
     # ======= STUDENT TODO START (edit only inside this block) =======
     # TODO(student): implement build_accumulated_map
-    
-    # placeholders
-    world_points = [static_points[0]]
+    world_points = []
+
+    for i in range(len(static_points)):
+        local_points = static_points[i][:, :2]
+
+        pose = poses_se2[i]
+        tx = pose[0]
+        ty = pose[1]
+        theta = pose[2]
+
+        cos_theta = np.cos(theta)
+        sin_theta = np.sin(theta)
+        rotation_matrix = np.array([
+            [cos_theta, -sin_theta],
+            [sin_theta, cos_theta]
+        ])
+
+        rotated_points = local_points @ rotation_matrix.T
+        world_points_list = rotated_points + np.array([tx, ty])
+
+        world_points.append(world_points_list)
 
     # ======= STUDENT TODO END (do not change code outside this block) =======
 

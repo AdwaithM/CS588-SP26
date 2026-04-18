@@ -205,3 +205,11 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+
+/mp0/__pycache__
+
+/mp1/__pycache__
+/mp1/data
+/mp1/outputs/cache
+/mp1/utils/__pycache__

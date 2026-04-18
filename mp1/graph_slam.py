@@ -3,9 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
+import time
 
 from slam_factors import distance_factor, motion_factor
-
+from scipy.linalg import cho_factor, cho_solve
 
 @dataclass
 class GraphSlamProblem:
@@ -150,15 +151,36 @@ def solve_graph_slam(
         # ======= STUDENT TODO START (edit only inside this block) =======
         # TODO(student): implement one Gauss-Newton update step
         # 1) Build linear system Adx = b, where A = J^T J and b = -J^T r
+        A = J.T @ J
+        b = -J.T @ r
+
         # 2) Add damping to A diagonal, A = A + damping * I
+        A_damped = A + damping * np.eye(A.shape[0])
+
         # 3) Solve for dx , you might find np.linalg.solve useful
+        start_time = time.perf_counter()
+
+        # I tested with both linalg and Cholesky
+        #dx = np.linalg.solve(A_damped, b)
+        c, low = cho_factor(A_damped)
+        dx = cho_solve((c, low), b)
+
+
+        end_time = time.perf_counter()
+        iteration_time_elapsed = (end_time - start_time) * 1000
+
+        print(f'Elapsed time for iteration: {iteration_time_elapsed} ms')
+
         # 4) Form candidate_state = state + dx and evaluate candidate cost 
+        step_size = 0.9
+        candidate_state = state + step_size * dx
+
         # 5) Done for you: Assign candidate_state to state and break early if the new cost is similar to the current cost
+        r_new, _, _, _ = build_linear_system(problem, candidate_state)
+        new_cost = 0.5 * float(np.sum(r_new * r_new))
+
         # 6) Optional: Add a small step size to dx if needed 
         
-        # placeholder
-        candidate_state = state
-        new_cost = cost + 1.0
 
         # ======= STUDENT TODO END (do not change code outside this block) =======
         

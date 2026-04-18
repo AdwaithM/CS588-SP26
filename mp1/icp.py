@@ -5,7 +5,7 @@ import math
 import numpy as np
 import open3d as o3d
 
-from utils.geometry_utils import se3_to_se2
+from utils.geometry_utils import se3_to_se2, normalize_angle
 
 
 def _to_open3d_cloud(points_xyz: np.ndarray):
@@ -57,10 +57,18 @@ def run_pairwise_icp(
 
     # ======= STUDENT TODO START (edit only inside this block) =======
     # TODO(student): implement pairwise ICP similar to MP0
-    
-    # placeholder
-    result = o3d.pipelines.registration.RegistrationResult()
-    result.transformation = np.eye(4, dtype=np.float32)
+    init_guess = np.eye(4)
+
+    criteria = o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=max_iterations)
+
+    result = o3d.pipelines.registration.registration_icp(
+        source,
+        target,
+        max_correspondence_distance,
+        init_guess,
+        o3d.pipelines.registration.TransformationEstimationPointToPoint(),
+        criteria
+    )
 
     
     # ======= STUDENT TODO END (do not change code outside this block) =======
@@ -98,9 +106,35 @@ def compute_icp_chains(
 
     # ======= STUDENT TODO START (edit only inside this block) =======
     # TODO(student): implement ICP chaining and motion edges
-    
-    # placeholders
     icp_poses = np.zeros((num_frames, 3), dtype=np.float64)
+
+    for i in range(num_frames - 1):
+        relative_movement = run_pairwise_icp(
+            static_points[i + 1],
+            static_points[i],
+            voxel_size,
+            max_correspondence_distance,
+            max_iterations
+        )
+
+        step_x, step_y, step_theta = relative_movement
+
+        edges.append((i, i + 1, step_x, step_y, step_theta))
+
+        prev_world_x, prev_world_y, prev_world_theta = icp_poses[i]
+
+        cosine_angle = np.cos(prev_world_theta)
+        sine_angle = np.sin(prev_world_theta)
+
+        new_world_x = prev_world_x + (step_x * cosine_angle - step_y * sine_angle)
+        new_world_y = prev_world_y + (step_x * sine_angle + step_y * cosine_angle)
+        new_world_theta = prev_world_theta + step_theta
+
+        icp_poses[i + 1] = np.array([
+            new_world_x,
+            new_world_y,
+            normalize_angle(new_world_theta)
+        ])
 
     # ======= STUDENT TODO END (do not change code outside this block) =======
 

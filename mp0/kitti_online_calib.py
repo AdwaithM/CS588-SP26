@@ -23,14 +23,25 @@ def disparity_to_pointcloud(disp: np.ndarray, K: np.ndarray, baseline: float):
     """
     # ======= STUDENT TODO START (edit only inside this block) =======
     # TODO(student): Implement unprojection from disparity to 3D points in camera frame.
-    
-    # Placeholder (keeps script runnable):
-    stereo_pts = np.array([[0.0, 0.0, 5.0]], dtype=np.float32)
-    valid = np.zeros_like(disp, dtype=bool)
-    valid[0, 0] = True
+    fx = K[0, 0]
+    fy = K[1, 1]
+    cx = K[0, 2]
+    cy = K[1, 2]
 
+    is_valid_disparity = disp > 0
+    depth_z = np.zeros_like(disp)
+    depth_z[is_valid_disparity] = (fx * baseline) / disp[is_valid_disparity]
+
+    height, width = disp.shape
+    u_grid, v_grid = np.meshgrid(np.arange(width), np.arange(height))
+    
+    X = (u_grid[is_valid_disparity] - cx) * depth_z[is_valid_disparity] / fx
+    Y = (v_grid[is_valid_disparity] - cy) * depth_z[is_valid_disparity] / fy
+    Z = depth_z[is_valid_disparity]
+
+    stero_points = np.stack([X, Y, Z], axis=-1)
     # ======= STUDENT TODO END (do not change code outside this block) =======
-    return stereo_pts, valid
+    return stero_points, is_valid_disparity
 
 
 def make_o3d_pointcloud(points: np.ndarray, color: tuple[float, float, float]):
@@ -77,15 +88,22 @@ def icp_align(
     """
     # ======= STUDENT TODO START (edit only inside this block) =======
     # TODO(student): Call Open3D ICP to align source -> target.
+    estimation = o3d.pipelines.registration.TransformationEstimationPointToPoint()
 
-    # Placeholder (keeps script runnable):
-    reg = o3d.pipelines.registration.RegistrationResult()
-    reg.transformation = np.eye(4, dtype=np.float32)
-    reg.fitness = 0.0
-    reg.inlier_rmse = 0.0
+    inital_guess = np.eye(4)
 
+    max_iteration = o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=max_iteration)
+
+    registration_result = o3d.pipelines.registration.registration_icp(
+        source,
+        target,
+        threshold,
+        inital_guess,
+        estimation,
+        max_iteration
+    )
     # ======= STUDENT TODO END (do not change code outside this block) =======
-    return reg
+    return registration_result
 
 
 def rotation_error_deg(R):
