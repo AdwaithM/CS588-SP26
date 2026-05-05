@@ -213,3 +213,7 @@ __marimo__/
 /mp1/data
 /mp1/outputs/cache
 /mp1/utils/__pycache__
+
+
+/mp2_final/outputs
+/mp2_final.zip
